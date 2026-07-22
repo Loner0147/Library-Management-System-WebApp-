@@ -22,4 +22,5 @@ USER(STUDENT) AND ADMIN (LIBRARY STAFF)
  Backend: JAVA (SPRINGBOOT)
  Forntend: HTML, CSS & JAVASCRIPT
  End-to-End Integration: THYMELEAF (SpringBoot)
+ Database: MONGO DB
  Other tools; DOCKER, WINDSURF IDE, REDINARY CLOUD...
