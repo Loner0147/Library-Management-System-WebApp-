@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Manage Users — LibraryHub Admin</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+<nav class="navbar" th:insert="~{fragments/navbar :: navbar(activePage='admin')}"></nav>
+
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+            <h2>Admin Panel</h2>
+            <p th:text="${currentUser.fullName}">Admin</p>
+        </div>
+        <nav class="admin-nav">
+            <a th:href="@{/admin}" class="admin-nav-link"> Dashboard</a>
+            <a th:href="@{/admin/books}" class="admin-nav-link"> Manage Books</a>
+            <a th:href="@{/admin/users}" class="admin-nav-link active"> Manage Users</a>
+            <a th:href="@{/books}" class="admin-nav-link"> View Library</a>
+        </nav>
+    </aside>
+
+    <main class="admin-main">
+        <div class="admin-header">
+            <div>
+                <h1>Manage Users</h1>
+                <p class="admin-subtitle" th:text="${users.size()} + ' registered users'">Users</p>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Provider</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="user : ${users}">
+                    <td>
+                        <div class="user-cell">
+                            <img th:if="${user.profileImageUrl}" th:src="${user.profileImageUrl}"
+                                 class="user-avatar-sm" alt="avatar"/>
+                            <div th:unless="${user.profileImageUrl}" class="avatar-placeholder-sm"
+                                 th:text="${user.firstName?.substring(0,1)?.toUpperCase()} ?: 'U'"></div>
+                            <div>
+                                <div class="user-cell-name" th:text="${user.fullName}">Name</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td th:text="${user.email}">email@example.com</td>
+                    <td>
+                        <span th:each="role : ${user.roles}" class="role-badge"
+                              th:classappend="${role == 'ROLE_ADMIN'} ? 'role-admin' : 'role-user'"
+                              th:text="${role.replace('ROLE_', '')}">USER</span>
+                    </td>
+                    <td>
+                        <span class="provider-badge"
+                              th:classappend="'provider-' + ${user.authProvider?.name()?.toLowerCase()}"
+                              th:text="${user.authProvider?.name() ?: 'LOCAL'}">LOCAL</span>
+                    </td>
+                    <td>
+                        <span th:classappend="${user.enabled} ? 'badge-available' : 'badge-borrowed'"
+                              class="status-badge"
+                              th:text="${user.enabled} ? 'Active' : 'Disabled'">Active</span>
+                    </td>
+                    <td th:text="${user.createdAt != null} ? ${#temporals.format(user.createdAt, 'dd MMM yyyy')} : '—'">—</td>
+                    <td class="table-actions" th:with="isCurrentUser=${user.email == currentUser.email}">
+                        <button th:if="${!user.roles.contains('ROLE_ADMIN')}"
+                                class="btn btn-xs btn-primary" th:attr="data-user-id=${user.id}" onclick="promoteUser(this.dataset.userId)">Make Admin</button>
+                        <button th:if="${user.roles.contains('ROLE_ADMIN') and !isCurrentUser}"
+                                class="btn btn-xs btn-warning" th:attr="data-user-id=${user.id}" onclick="demoteUser(this.dataset.userId)">Remove Admin</button>
+                        <button th:unless="${isCurrentUser}"
+                                class="btn btn-xs btn-secondary" th:attr="data-user-id=${user.id}" onclick="toggleUserStatus(this.dataset.userId)">
+                            <span th:text="${user.enabled} ? 'Disable' : 'Enable'">Toggle</span>
+                        </button>
+                        <button th:unless="${isCurrentUser}"
+                                class="btn btn-xs btn-danger" th:attr="data-user-id=${user.id}" onclick="deleteUser(this.dataset.userId)">Delete</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<div id="toast" class="toast"></div>
+<script th:src="@{/js/main.js}"></script>
+<script th:src="@{/js/admin.js}"></script>
+</body>
+</html>

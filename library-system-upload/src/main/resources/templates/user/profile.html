@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>My Profile — LibraryHub</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+<nav class="navbar" th:insert="~{fragments/navbar :: navbar(activePage='profile')}"></nav>
+
+<div class="profile-container">
+    <!-- Profile Card -->
+    <div class="profile-card">
+        <div class="profile-avatar-section">
+            <img th:if="${currentUser.profileImageUrl}" th:src="${currentUser.profileImageUrl}"
+                 class="profile-avatar" alt="Profile"/>
+            <div th:unless="${currentUser.profileImageUrl}" class="profile-avatar-placeholder"
+                 th:text="${currentUser.firstName?.substring(0,1)?.toUpperCase()} ?: 'U'"></div>
+            <div class="profile-name-section">
+                <h1 class="profile-name" th:text="${currentUser.fullName}">Full Name</h1>
+                <p class="profile-email" th:text="${currentUser.email}">email</p>
+                <div class="profile-badges">
+                    <span th:each="role : ${currentUser.roles}" class="role-badge"
+                          th:classappend="${role == 'ROLE_ADMIN'} ? 'role-admin' : 'role-user'"
+                          th:text="${role.replace('ROLE_', '')}">USER</span>
+                    <span class="provider-badge"
+                          th:classappend="'provider-' + ${currentUser.authProvider?.name()?.toLowerCase()}"
+                          th:text="${currentUser.authProvider?.name() ?: 'LOCAL'}">LOCAL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="profile-tabs">
+            <button class="tab-btn active" onclick="showTab('borrowed')">Borrowed Books</button>
+            <button class="tab-btn" onclick="showTab('settings')">Settings</button>
+        </div>
+
+        <!-- Borrowed Books Tab -->
+        <div id="tab-borrowed" class="tab-panel active">
+            <h2 class="section-title">Currently Borrowed</h2>
+            <div th:if="${borrowedBooks.isEmpty()}" class="empty-state-sm">
+                <p>You haven't borrowed any books yet.</p>
+                <a th:href="@{/books}" class="btn btn-primary">Browse Books</a>
+            </div>
+            <div class="borrowed-grid" th:unless="${borrowedBooks.isEmpty()}">
+                <div class="borrowed-card" th:each="book : ${borrowedBooks}">
+                    <div class="borrowed-cover">
+                        <img th:if="${book.coverImageUrl}" th:src="${book.coverImageUrl}"
+                             alt="cover" class="borrowed-cover-img"
+                             onerror="this.style.display='none'"/>
+                        <div th:unless="${book.coverImageUrl}" class="cover-placeholder-sm"></div>
+                    </div>
+                    <div class="borrowed-info">
+                        <h3 class="borrowed-title" th:text="${book.title}">Title</h3>
+                        <p class="borrowed-author" th:text="${book.author}">Author</p>
+                        <div class="borrowed-actions">
+                            <a th:if="${book.documentUrl}" th:href="${book.documentUrl}"
+                               target="_blank" class="btn btn-sm btn-primary"> Read</a>
+                            <button class="btn btn-sm btn-warning"
+                                    th:attr="onclick='returnBook(\'' + ${book.id} + '\')'">Return</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-panel">
+            <h2 class="section-title">Profile Settings</h2>
+            <form id="profileForm" class="settings-form" onsubmit="updateProfile(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name</label>
+                        <input type="text" id="settingsFirstName" class="form-input"
+                               th:value="${currentUser.firstName}" required/>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" id="settingsLastName" class="form-input"
+                               th:value="${currentUser.lastName}" required/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Profile Image URL</label>
+                    <input type="url" id="settingsImageUrl" class="form-input"
+                           th:value="${currentUser.profileImageUrl}" placeholder="https://..."/>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Profile</button>
+            </form>
+
+            <div th:if="${currentUser.authProvider?.name() == 'LOCAL'}" class="settings-divider"></div>
+
+            <div th:if="${currentUser.authProvider?.name() == 'LOCAL'}">
+                <h2 class="section-title">Change Password</h2>
+                <form id="passwordForm" class="settings-form" onsubmit="changePassword(event)">
+                    <div class="form-group">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" id="oldPassword" class="form-input" required/>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">New Password</label>
+                        <input type="password" id="newPassword" class="form-input" required minlength="8"/>
+                    </div>
+                    <button type="submit" class="btn btn-secondary">Change Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script th:src="@{/js/main.js}"></script>
+<script th:src="@{/js/profile.js}"></script>
+<script th:src="@{/js/books.js}"></script>
+</body>
+</html>

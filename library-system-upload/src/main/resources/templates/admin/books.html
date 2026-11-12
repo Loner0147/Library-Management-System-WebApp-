@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Manage Books — LibraryHub Admin</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+<nav class="navbar" th:insert="~{fragments/navbar :: navbar(activePage='admin')}"></nav>
+
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+            <h2>Admin Panel</h2>
+            <p th:text="${currentUser.fullName}">Admin</p>
+        </div>
+        <nav class="admin-nav">
+            <a th:href="@{/admin}" class="admin-nav-link">Dashboard</a>
+            <a th:href="@{/admin/books}" class="admin-nav-link active">Manage Books</a>
+            <a th:href="@{/admin/users}" class="admin-nav-link">Manage Users</a>
+            <a th:href="@{/books}" class="admin-nav-link">View Library</a>
+        </nav>
+    </aside>
+
+    <main class="admin-main">
+        <div class="admin-header">
+            <div>
+                <h1>Manage Books</h1>
+                <p class="admin-subtitle">Add, edit or delete books from the library</p>
+            </div>
+            <button class="btn btn-primary" onclick="openAddBookModal()">+ Add New Book</button>
+        </div>
+
+        <!-- Search -->
+        <form th:action="@{/admin/books}" method="get" class="admin-search">
+            <input type="text" name="search" class="form-input" placeholder="Search by title, author..."
+                   th:value="${search}"/>
+            <button type="submit" class="btn btn-secondary">Search</button>
+            <a th:href="@{/admin/books}" class="btn btn-outline">Clear</a>
+        </form>
+
+        <!-- Books Table -->
+        <div class="table-card">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Cover</th>
+                    <th>Title / Author</th>
+                    <th>Genre</th>
+                    <th>Copies</th>
+                    <th>Status</th>
+                    <th>Document URL</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="book : ${books}" th:attr="data-id=${book.id}">
+                    <td>
+                        <img th:if="${book.coverImageUrl}" th:src="${book.coverImageUrl}"
+                             class="table-cover" alt="cover"
+                             onerror="this.src='data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;40&quot; height=&quot;56&quot;><rect width=&quot;40&quot; height=&quot;56&quot; fill=&quot;%23e2e8f0&quot;/><text x=&quot;50%&quot; y=&quot;50%&quot; font-size=&quot;20&quot; text-anchor=&quot;middle&quot; dy=&quot;.3em&quot;>📖</text></svg>'"/>
+                        <span th:unless="${book.coverImageUrl}" class="no-cover"></span>
+                    </td>
+                    <td>
+                        <div class="table-book-title" th:text="${book.title}">Title</div>
+                        <div class="table-book-author" th:text="${book.author}">Author</div>
+                    </td>
+                    <td><span class="table-badge" th:text="${book.genre ?: '—'}">Genre</span></td>
+                    <td>
+                        <span th:text="${book.availableCopies} + '/' + ${book.totalCopies}">1/1</span>
+                    </td>
+                    <td>
+                        <span th:classappend="${book.status.name() == 'AVAILABLE'} ? 'badge-available' : 'badge-borrowed'"
+                              class="status-badge" th:text="${book.status.name()}">AVAILABLE</span>
+                    </td>
+                    <td>
+                        <a th:if="${book.documentUrl}" th:href="${book.documentUrl}" target="_blank"
+                           class="doc-link" title="Open document">
+                             <span class="doc-url-short" th:text="${#strings.abbreviate(book.documentUrl, 30)}">url</span>
+                        </a>
+                        <span th:unless="${book.documentUrl}" class="text-muted">No document</span>
+                    </td>
+                    <td class="table-actions">
+                        <button class="btn btn-xs btn-secondary" th:attr="data-book-id=${book.id}" onclick="openEditModal(this.dataset.bookId)">✏️ Edit</button>
+                        <button class="btn btn-xs btn-danger" th:attr="data-book-id=${book.id}" onclick="deleteBook(this.dataset.bookId)">🗑 Delete</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" th:if="${totalPages > 1}">
+            <a th:href="@{/admin/books(page=${currentPage - 1}, search=${search})}"
+               class="page-btn" th:classappend="${currentPage == 0} ? 'disabled' : ''">← Prev</a>
+            <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                <a th:href="@{/admin/books(page=${i}, search=${search})}"
+                   class="page-btn" th:classappend="${i == currentPage} ? 'active' : ''"
+                   th:text="${i + 1}">1</a>
+            </span>
+            <a th:href="@{/admin/books(page=${currentPage + 1}, search=${search})}"
+               class="page-btn" th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''">Next →</a>
+        </div>
+    </main>
+</div>
+
+<!-- Add/Edit Book Modal -->
+<div id="bookModal" class="modal">
+    <div class="modal-overlay" onclick="closeBookModal()"></div>
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">Add New Book</h2>
+            <button class="modal-close" onclick="closeBookModal()">✕</button>
+        </div>
+        <form id="bookForm" class="modal-form" onsubmit="saveBook(event)">
+            <input type="hidden" id="bookId"/>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-label">Title *</label><input type="text" id="bTitle" class="form-input" required/></div>
+                <div class="form-group"><label class="form-label">Author *</label><input type="text" id="bAuthor" class="form-input" required/></div>
+                <div class="form-group"><label class="form-label">ISBN</label><input type="text" id="bIsbn" class="form-input"/></div>
+                <div class="form-group"><label class="form-label">Genre</label><input type="text" id="bGenre" class="form-input"/></div>
+                <div class="form-group"><label class="form-label">Publisher</label><input type="text" id="bPublisher" class="form-input"/></div>
+                <div class="form-group"><label class="form-label">Year</label><input type="number" id="bYear" class="form-input" min="1000" max="2100"/></div>
+                <div class="form-group"><label class="form-label">Language</label><input type="text" id="bLanguage" class="form-input"/></div>
+                <div class="form-group"><label class="form-label">Pages</label><input type="number" id="bPages" class="form-input" min="1"/></div>
+                <div class="form-group form-full"><label class="form-label">Description</label><textarea id="bDescription" class="form-input form-textarea" rows="3"></textarea></div>
+                <div class="form-group form-full"><label class="form-label">Cover Image URL</label><input type="url" id="bCoverUrl" class="form-input"/></div>
+                <div class="form-group form-full">
+                    <label class="form-label"> Document URL <span class="label-hint">(PDF, ePub, Google Drive, etc.)</span></label>
+                    <input type="url" id="bDocUrl" class="form-input" placeholder="https://..."/>
+                </div>
+                <div class="form-group"><label class="form-label">Total Copies</label><input type="number" id="bCopies" class="form-input" min="1" value="1"/></div>
+                <div class="form-group"><label class="form-label">Tags</label><input type="text" id="bTags" class="form-input" placeholder="tag1, tag2"/></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeBookModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Book</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script th:src="@{/js/main.js}"></script>
+<script th:src="@{/js/books.js}"></script>
+</body>
+</html>

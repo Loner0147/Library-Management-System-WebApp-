@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    container_name: library-app
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/librarydb
+      JWT_SECRET: LibrarySystemSecretKey2024VeryLongAndSecureKeyForJWTSigningPurposes!
+      JWT_EXPIRATION: 86400000
+      JWT_REFRESH_EXPIRATION: 604800000
+      # --- OAuth2: fill in your credentials or leave blank to disable OAuth ---
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    networks:
+      - library-net
+
+  mongo:
+    image: mongo:7.0
+    container_name: library-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: librarydb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - library-net
+
+volumes:
+  mongo-data:
+
+networks:
+  library-net:
+    driver: bridge
+

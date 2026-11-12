@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Browse Books — LibraryHub</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+<!-- NAVBAR -->
+<nav class="navbar" th:insert="~{fragments/navbar :: navbar(activePage='books')}"></nav>
+
+<div class="page-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Search</h3>
+            <form th:action="@{/books}" method="get" class="search-form">
+                <div class="search-input-wrapper">
+                    <input type="text" name="search" class="search-input"
+                           th:value="${search}" placeholder="Search books, authors..."/>
+                    <button type="submit" class="search-btn">🔍</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Genres</h3>
+            <ul class="genre-list">
+                <li>
+                    <a th:href="@{/books}" class="genre-item"
+                       th:classappend="${selectedGenre == null} ? 'active' : ''">All Books</a>
+                </li>
+                <li th:each="genre : ${genres}">
+                    <a th:href="@{/books(genre=${genre})}" class="genre-item"
+                       th:classappend="${selectedGenre == genre} ? 'active' : ''"
+                       th:text="${genre}">Genre</a>
+                </li>
+            </ul>
+        </div>
+
+        <div th:if="${isAdmin}" class="sidebar-section">
+            <a th:href="@{/admin}" class="btn btn-secondary btn-full admin-panel-btn">Admin Panel</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="books-main">
+        <div class="books-header">
+            <div class="books-header-left">
+                <h1 class="page-title" th:text="${search != null} ? 'Results for &quot;' + ${search} + '&quot;' : (${selectedGenre != null} ? ${selectedGenre} + ' Books' : 'All Books')">
+                    All Books
+                </h1>
+                <span class="books-count" th:text="${totalItems} + ' books found'">0 books</span>
+            </div>
+            <div th:if="${isAdmin}" class="books-header-right">
+                <button class="btn btn-primary" onclick="openAddBookModal()">+ Add Book</button>
+            </div>
+        </div>
+
+        <!-- Books Grid -->
+        <div class="books-grid" th:if="${!books.isEmpty()}">
+            <div class="book-card" th:each="book : ${books}" th:attr="data-id=${book.id}">
+                <div class="book-cover-wrapper">
+                    <img th:if="${book.coverImageUrl}" th:src="${book.coverImageUrl}"
+                         class="book-cover" alt="Cover" loading="lazy"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+                    <div class="book-cover-placeholder" th:classappend="${book.coverImageUrl} ? 'hidden' : ''">
+                        <span class="placeholder-icon"></span>
+                    </div>
+                    <div class="book-status-badge"
+                         th:classappend="${book.status.name() == 'AVAILABLE'} ? 'badge-available' : 'badge-borrowed'"
+                         th:text="${book.status.name() == 'AVAILABLE'} ? 'Available' : 'Borrowed'"></div>
+                </div>
+                <div class="book-info">
+                    <h3 class="book-title">
+                        <a th:href="@{/books/{id}(id=${book.id})}" th:text="${book.title}">Book Title</a>
+                    </h3>
+                    <p class="book-author" th:text="${book.author}">Author</p>
+                    <div class="book-meta">
+                        <span class="book-genre" th:text="${book.genre}" th:if="${book.genre}">Genre</span>
+                        <span class="book-copies" th:text="${book.availableCopies} + '/' + ${book.totalCopies} + ' copies'">1/1 copies</span>
+                    </div>
+                    <div class="book-actions">
+                        <a th:href="@{/books/{id}(id=${book.id})}" class="btn btn-sm btn-secondary">View</a>
+                        <a th:if="${book.documentUrl}" th:href="${book.documentUrl}"
+                           target="_blank" class="btn btn-sm btn-outline"> Read</a>
+                        <div th:if="${isAdmin}" class="admin-book-actions">
+                           <button class="btn btn-sm btn-warning" th:attr="data-book-id=${book.id}" onclick="openEditModal(this.dataset.bookId)"> Edit </button>
+                            <button class="btn btn-sm btn-danger" th:attr="data-book-id=${book.id}" onclick="deleteBook(this.dataset.bookId)">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" th:if="${books.isEmpty()}">
+            <div class="empty-icon"></div>
+            <h2>No books found</h2>
+            <p>Try adjusting your search or browse all books.</p>
+            <a th:href="@{/books}" class="btn btn-primary">Browse All Books</a>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" th:if="${totalPages > 1}">
+            <a th:href="@{/books(page=${currentPage - 1}, search=${search}, genre=${selectedGenre})}"
+               class="page-btn" th:classappend="${currentPage == 0} ? 'disabled' : ''">← Prev</a>
+            <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                <a th:href="@{/books(page=${i}, search=${search}, genre=${selectedGenre})}"
+                   class="page-btn" th:classappend="${i == currentPage} ? 'active' : ''"
+                   th:text="${i + 1}">1</a>
+            </span>
+            <a th:href="@{/books(page=${currentPage + 1}, search=${search}, genre=${selectedGenre})}"
+               class="page-btn" th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''">Next →</a>
+        </div>
+    </main>
+</div>
+
+<!-- Add/Edit Book Modal (Admin) -->
+<div id="bookModal" class="modal" th:if="${isAdmin}">
+    <div class="modal-overlay" onclick="closeBookModal()"></div>
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">Add New Book</h2>
+            <button class="modal-close" onclick="closeBookModal()">✕</button>
+        </div>
+        <form id="bookForm" class="modal-form" onsubmit="saveBook(event)">
+            <input type="hidden" id="bookId"/>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" id="bTitle" class="form-input" required placeholder="Book title"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Author *</label>
+                    <input type="text" id="bAuthor" class="form-input" required placeholder="Author name"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ISBN</label>
+                    <input type="text" id="bIsbn" class="form-input" placeholder="978-..."/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Genre</label>
+                    <input type="text" id="bGenre" class="form-input" placeholder="Fiction, Technology..."/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Publisher</label>
+                    <input type="text" id="bPublisher" class="form-input"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Publication Year</label>
+                    <input type="number" id="bYear" class="form-input" min="1000" max="2100"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Language</label>
+                    <input type="text" id="bLanguage" class="form-input" placeholder="English"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Page Count</label>
+                    <input type="number" id="bPages" class="form-input" min="1"/>
+                </div>
+                <div class="form-group form-full">
+                    <label class="form-label">Description</label>
+                    <textarea id="bDescription" class="form-input form-textarea" rows="3" placeholder="Book description..."></textarea>
+                </div>
+                <div class="form-group form-full">
+                    <label class="form-label">Cover Image URL</label>
+                    <input type="url" id="bCoverUrl" class="form-input" placeholder="https://..."/>
+                </div>
+                <div class="form-group form-full">
+                    <label class="form-label"> Document URL <span class="label-hint">(PDF, ePub, Drive link)</span></label>
+                    <input type="url" id="bDocUrl" class="form-input" placeholder="https://drive.google.com/... or https://example.com/book.pdf"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Copies</label>
+                    <input type="number" id="bCopies" class="form-input" min="1" value="1"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tags (comma-separated)</label>
+                    <input type="text" id="bTags" class="form-input" placeholder="fiction, classic, bestseller"/>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeBookModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveBookBtn">Save Book</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Notifications -->
+<div id="toast" class="toast"></div>
+
+<script th:src="@{/js/main.js}"></script>
+<script th:src="@{/js/books.js}"></script>
+</body>
+</html>
